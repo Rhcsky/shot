@@ -1,0 +1,31 @@
+defaults:
+  - train: source
+  - dataset: office-home
+  - model: model
+  - da: da
+
+name: test
+
+hydra:
+  run:
+    dir: runs/${hydra.job.name}_${dataset.name}_${da.type}_${now:%m-%d}_${now:%H-%M}/
+
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${name}.log
+    root:
+      handlers:
+        - console
+        - file
+    disable_existing_loggers: false

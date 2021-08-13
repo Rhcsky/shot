@@ -1,6 +1,7 @@
 #personal
 data/
 .idea/
+runs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
