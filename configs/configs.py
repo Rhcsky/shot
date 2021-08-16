@@ -17,6 +17,7 @@ class SourceTrainConfig:
     lr: float = 1e-2
     seed: int = 2020
     smooth: float = 0.1
+    use_pretrained_backbone: bool = True
 
 
 @dataclass
@@ -27,7 +28,7 @@ class TargetTrainConfig:
     lr: float = 1e-2
     seed: int = 2020
     smooth: float = 0.1
-    saved_model_path: str = '../train_source_RMFD_pda_08-16_16-48'
+    saved_model_path: str = '../office-home/train_source_office-home_pda_08-16_19-10'
 
     gent: bool = True
     ent: bool = True
@@ -74,8 +75,8 @@ class OfficeHomeConfig(DAConfig):
 class RMFDatasetConfig(DAConfig):
     name: str = "RMFD"
     root: str = "../../data"
-    resize_size: int = 256
-    crop_size: int = 224
+    resize_size: int = 112
+    crop_size: int = 112
 
     if DAConfig.type == "oda":
         num_class: int = 442
@@ -95,7 +96,7 @@ class RMFDatasetConfig(DAConfig):
 @dataclass
 class Config:
     da: DAConfig
-    train: TargetTrainConfig
+    train: SourceTrainConfig
     model: ModelConfig
     dataset: OfficeHomeConfig
 
