@@ -4,6 +4,9 @@ import torch
 from sklearn.cluster import KMeans
 from sklearn.metrics import confusion_matrix
 from torch import nn
+from tqdm import tqdm
+
+from shot.networks import loss
 
 
 class Scheduler:
@@ -71,7 +74,7 @@ def cal_acc(loader, netF, netB, netC, flag=False):
     start_test = True
     with torch.no_grad():
         iter_test = iter(loader)
-        for i in range(len(loader)):
+        for i in tqdm(range(len(loader)), leave=False, dynamic_ncols=True):
             data = iter_test.next()
             inputs = data[0]
             labels = data[1]
@@ -105,7 +108,7 @@ def cal_acc_oda(loader, netF, netB, netC, epsilon, class_num):
     start_test = True
     with torch.no_grad():
         iter_test = iter(loader)
-        for i in range(len(loader)):
+        for i in tqdm(range(len(loader)), leave=False, dynamic_ncols=True):
             data = iter_test.next()
             inputs = data[0]
             labels = data[1]
@@ -136,6 +139,51 @@ def cal_acc_oda(loader, netF, netB, netC, epsilon, class_num):
 
     return np.mean(acc[:-1]), np.mean(acc), unknown_acc
     # return np.mean(acc), np.mean(acc[:-1])
+
+
+def cal_acc_target_oda(loader, netF, netB, netC, cfg, flag=False):
+    start_test = True
+    with torch.no_grad():
+        iter_test = iter(loader)
+        for i in range(len(loader)):
+            data = iter_test.next()
+            inputs = data[0]
+            labels = data[1]
+            inputs = inputs.cuda()
+            outputs = netC(netB(netF(inputs)))
+            if start_test:
+                all_output = outputs.float().cpu()
+                all_label = labels.float()
+                start_test = False
+            else:
+                all_output = torch.cat((all_output, outputs.float().cpu()), 0)
+                all_label = torch.cat((all_label, labels.float()), 0)
+    _, predict = torch.max(all_output, 1)
+    accuracy = torch.sum(torch.squeeze(predict).float() == all_label).item() / float(all_label.size()[0])
+    mean_ent = torch.mean(loss.Entropy(nn.Softmax(dim=1)(all_output))).cpu().data.item()
+
+    if flag:
+        all_output = nn.Softmax(dim=1)(all_output)
+        ent = torch.sum(-all_output * torch.log(all_output + cfg.model.epsilon), dim=1) / np.log(cfg.dataset.num_class)
+
+        from sklearn.cluster import KMeans
+        kmeans = KMeans(2, random_state=0).fit(ent.reshape(-1, 1))
+        labels = kmeans.predict(ent.reshape(-1, 1))
+
+        idx = np.where(labels == 1)[0]
+        iidx = 0
+        if ent[idx].mean() > ent.mean():
+            iidx = 1
+        predict[np.where(labels == iidx)[0]] = cfg.dataset.num_class
+
+        matrix = confusion_matrix(all_label, torch.squeeze(predict).float())
+        matrix = matrix[np.unique(all_label).astype(int), :]
+
+        acc = matrix.diagonal() / matrix.sum(axis=1) * 100
+        unknown_acc = acc[-1:].item()
+        return np.mean(acc[:-1]), np.mean(acc), unknown_acc
+    else:
+        return accuracy * 100, mean_ent
 
 
 def matplotlib_imshow(img, one_channel=False):

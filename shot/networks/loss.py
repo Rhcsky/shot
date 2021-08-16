@@ -10,6 +10,13 @@ def grl_hook(coeff):
     return fun1
 
 
+def Entropy(input_):
+    epsilon = 1e-5
+    entropy = -input_ * torch.log(input_ + epsilon)
+    entropy = torch.sum(entropy, dim=1)
+    return entropy
+
+
 def CDAN(input_list, ad_net, entropy=None, coeff=None, random_layer=None):
     softmax_output = input_list[1].detach()
     feature = input_list[0]
