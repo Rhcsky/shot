@@ -10,6 +10,8 @@ from omegaconf import OmegaConf
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
+from shot.backbones import get_model
+
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 os.chdir(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
@@ -189,13 +191,17 @@ def main(cfg: Config) -> None:
     else:
         train_loader, test_loader = get_target_dataloader(cfg)
 
-    netF = network.ResBase('resnet50').to(device)
-    netB = network.feat_bootleneck(netF.in_features, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
+    if cfg.train.use_pretrained_backbone:
+        netF = get_model('r50', dropout=0.0, num_features=512).to(device)
+        netB = network.feat_bootleneck(512, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
+    else:
+        netF = network.ResBase('resnet50').to(device)
+        netB = network.feat_bootleneck(netF.in_features, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
     netC = network.feat_classifier(cfg.dataset.num_class, cfg.model.bottleneck_dim, cfg.model.layer).to(device)
 
-    netF = torch.nn.parallel.DataParallel(netF)
-    netB = torch.nn.parallel.DataParallel(netB)
-    netC = torch.nn.parallel.DataParallel(netC)
+    netF.load_state_dict(torch.load(os.path.join(cfg.train.saved_model_path, 'source_F.pt')))
+    netB.load_state_dict(torch.load(os.path.join(cfg.train.saved_model_path, 'source_B.pt')))
+    netC.load_state_dict(torch.load(os.path.join(cfg.train.saved_model_path, 'source_C.pt')))
 
     netC.eval()
     change_model_require_grad(netC, False)

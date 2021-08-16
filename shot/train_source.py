@@ -12,8 +12,9 @@ from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 os.chdir(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from shot.networks import network
-from shot.networks.loss import CrossEntropyLabelSmooth
+from backbones import get_model
+from networks import network
+from networks.loss import CrossEntropyLabelSmooth
 from configs.configs import Config
 from dataloader import get_test_dataloader, get_source_dataloader, get_RMFD_source_dataloader
 from utils.utils import Scheduler, topk_accuracy, cal_acc, cal_acc_oda, AverageMeter
@@ -120,8 +121,13 @@ def main(cfg: Config) -> None:
         train_loader, valid_loader = get_source_dataloader(cfg)
         test_loader_list = get_test_dataloader(cfg)
 
-    netF = network.ResBase('resnet50').to(device)
-    netB = network.feat_bootleneck(netF.in_features, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
+    if cfg.train.use_pretrained_backbone:
+        netF = get_model('r50', dropout=0.0, num_features=512).to(device)
+        netF.load_state_dict(torch.load('../../data/backbone.pth'))
+        netB = network.feat_bootleneck(512, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
+    else:
+        netF = network.ResBase('resnet50').to(device)
+        netB = network.feat_bootleneck(netF.in_features, cfg.model.bottleneck_dim, cfg.model.classifier).to(device)
     netC = network.feat_classifier(cfg.dataset.num_class, cfg.model.bottleneck_dim, cfg.model.layer).to(device)
 
     params = [
