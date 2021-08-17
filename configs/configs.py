@@ -29,6 +29,7 @@ class TargetTrainConfig:
     seed: int = 2020
     smooth: float = 0.1
     saved_model_path: str = '../office-home/train_source_office-home_pda_08-16_19-10'
+    use_pretrained_backbone: bool = True
 
     gent: bool = True
     ent: bool = True

@@ -10,13 +10,12 @@ from omegaconf import OmegaConf
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
 
-from shot.backbones import get_model
-
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 os.chdir(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+from backbones import get_model
 from configs.configs import Config
-from dataloader import get_RMFD_target_dataloader, get_target_dataloader
+from dataloader import get_target_dataloader, get_RMFD_target_dataloader
 from utils.utils import Scheduler, cal_acc, AverageMeter, Entropy
 from networks import network
 
@@ -30,24 +29,23 @@ def change_model_require_grad(model: torch.nn.Module, true_or_false: bool):
 
 def obtain_label(loader, netF, netB, netC, cfg):
     start_test = True
-    with torch.no_grad():
-        iter_test = iter(loader)
-        for _ in range(len(loader)):
-            data = iter_test.next()
-            inputs = data[0]
-            labels = data[1]
-            inputs = inputs.cuda()
-            feas = netB(netF(inputs))
-            outputs = netC(feas)
-            if start_test:
-                all_fea = feas.float().cpu()
-                all_output = outputs.float().cpu()
-                all_label = labels.float()
-                start_test = False
-            else:
-                all_fea = torch.cat((all_fea, feas.float().cpu()), 0)
-                all_output = torch.cat((all_output, outputs.float().cpu()), 0)
-                all_label = torch.cat((all_label, labels.float()), 0)
+    iter_test = iter(loader)
+    for _ in range(len(loader)):
+        data = iter_test.next()
+        inputs = data[0]
+        labels = data[1]
+        inputs = inputs.cuda()
+        feas = netB(netF(inputs))
+        outputs = netC(feas)
+        if start_test:
+            all_fea = feas.float().cpu()
+            all_output = outputs.float().cpu()
+            all_label = labels.float()
+            start_test = False
+        else:
+            all_fea = torch.cat((all_fea, feas.float().cpu()), 0)
+            all_output = torch.cat((all_output, outputs.float().cpu()), 0)
+            all_label = torch.cat((all_label, labels.float()), 0)
 
     all_output = torch.nn.Softmax(dim=1)(all_output)
     _, predict = torch.max(all_output, 1)
@@ -82,10 +80,11 @@ def obtain_label(loader, netF, netB, netC, cfg):
     log_str = f'PseudoLabeling: Accuracy = {before_acc * 100:.2f}% -> {after_acc * 100:.2f}%'
 
     logging.info(log_str)
-
+    # return torch.squeeze(predict).detach().numpy()
     return pred_label.astype('int')
 
 
+@torch.no_grad()
 def get_mem_label(cfg, netF, netB, netC, test_loader):
     netF.eval()
     netB.eval()

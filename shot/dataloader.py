@@ -1,4 +1,5 @@
 import os
+import pickle
 from glob import glob
 
 import torch
@@ -181,15 +182,16 @@ def get_target_dataloader(cfg):
 def get_RMFD_source_dataloader(cfg):
     src_path = os.path.join(cfg.dataset.root, cfg.dataset.name, cfg.dataset.name_src)
     tar_path = os.path.join(cfg.dataset.root, cfg.dataset.name, cfg.dataset.name_tar)
-    source_folder_dataset = ImageFolder(src_path, loader=lambda x: x)
-    target_folder_dataset = ImageFolder(tar_path, loader=lambda x: x)
-    same_classes = list(filter(lambda x: (x in source_folder_dataset.classes) and (x in target_folder_dataset.classes),
-                               list(set(source_folder_dataset.classes + target_folder_dataset.classes))))
+    with open('../../data/same_classes_list.pkl', 'rb') as f:
+        same_classes = pickle.load(f)
 
     source_dataset = FaceDataset(same_classes, src_path,
                                  train_transform(cfg.dataset.resize_size, cfg.dataset.crop_size))
 
     target_dataset = FaceDataset(same_classes, tar_path, test_transform(cfg.dataset.resize_size, cfg.dataset.crop_size))
+
+    print(f"Source dataset: {len(source_dataset)}")
+    print(f"Target dataset: {len(target_dataset)}")
 
     source_loader = DataLoader(source_dataset, batch_size=cfg.train.batch_size, num_workers=cfg.train.worker,
                                shuffle=True)
@@ -201,16 +203,15 @@ def get_RMFD_source_dataloader(cfg):
 
 
 def get_RMFD_target_dataloader(cfg):
-    src_path = os.path.join(cfg.dataset.root, cfg.dataset.name, cfg.dataset.name_src)
     tar_path = os.path.join(cfg.dataset.root, cfg.dataset.name, cfg.dataset.name_tar)
-    source_folder_dataset = ImageFolder(src_path, loader=lambda x: x)
-    target_folder_dataset = ImageFolder(tar_path, loader=lambda x: x)
-    same_classes = list(filter(lambda x: (x in source_folder_dataset.classes) and (x in target_folder_dataset.classes),
-                               list(set(source_folder_dataset.classes + target_folder_dataset.classes))))
+    with open('../../data/same_classes_list.pkl', 'rb') as f:
+        same_classes = pickle.load(f)
 
-    train_dataset = FaceDataset(same_classes, tar_path, train_transform(cfg.dataset.resize_size, cfg.dataset.crop_size))
+    train_dataset = FaceDataset(same_classes, tar_path, train_transform(cfg.dataset.resize_size, cfg.dataset.crop_size),
+                                True)
 
-    test_dataset = FaceDataset(same_classes, tar_path, test_transform(cfg.dataset.resize_size, cfg.dataset.crop_size))
+    test_dataset = FaceDataset(same_classes, tar_path, test_transform(cfg.dataset.resize_size, cfg.dataset.crop_size),
+                               True)
 
     train_loader = DataLoader(train_dataset, batch_size=cfg.train.batch_size, num_workers=cfg.train.worker,
                               shuffle=True)

@@ -145,13 +145,12 @@ def main(cfg: Config) -> None:
     best_netF = None
     best_netB = None
     best_netC = None
-    interval = cfg.train.max_epoch // 10
+    interval = cfg.train.max_epoch // 50
     for epoch in range(cfg.train.max_epoch):
         train_log = train(epoch, train_loader, netF, netB, netC, criterion, optimizer, scheduler)
 
         if epoch % interval == 0 or epoch == cfg.train.max_epoch - 1:
             acc_val, val_log = validate(valid_loader, netF, netB, netC, cfg)
-
             if acc_val >= best_acc:
                 best_acc = acc_val
                 best_netF = netF.state_dict()
